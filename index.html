@@ -6,6 +6,30 @@
     <title>베이지론</title>
   </head>
   <body>
+    <script async src="https://www.googletagmanager.com/gtag/js?id=AW-18078070609"></script>
+    <script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+
+  gtag('config', 'AW-18078070609');
+</script>
+    <script>
+function gtag_report_conversion(url) {
+  var callback = function () {
+    if (typeof(url) != 'undefined') {
+      window.location = url;
+    }
+  };
+  gtag('event', 'conversion', {
+      'send_to': 'AW-18078070609/krDbCNWvj5kcENHupaxD',
+      'value': 1.0,
+      'currency': 'KRW',
+      'event_callback': callback
+  });
+  return false;
+}
+</script>
     <div id="root"></div>
     <script type="module" src="/src/main.jsx"></script>
   </body>

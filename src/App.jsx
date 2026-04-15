@@ -57,27 +57,49 @@ const formatPhone = (value) => {
 const handleSubmit = async () => {
   if (!validateForm()) return;
 
-  const res = await fetch("/api/survey", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({ name, phone }),
-  });
+  try {
+    const res = await fetch("/api/survey", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ name, phone }),
+    });
 
-  const data = await res.json();
+    const text = await res.text();
+    let data = null;
 
-  // ✅ 상태코드 기반 처리
-  if (res.status === 200) {
-    alert("신청 완료!");
-    setName("");
-    setPhone("");
-  } 
-  else if (res.status === 429) {
-    alert(data.error || "이미 신청하셨어요 상담원이 곧 연락드립니다!");
-  } 
-  else {
-    alert("서버 오류 발생");
+    try {
+      data = text ? JSON.parse(text) : null;
+    } catch {
+      data = null;
+    }
+
+    // ✅ 상태코드 기반 처리
+    if (res.status === 200) {
+      if (typeof window.gtag_report_conversion === "function") {
+        window.gtag_report_conversion();
+      }
+      alert("신청 완료!");
+      setName("");
+      setPhone("");
+      return;
+    }
+
+    if (res.status === 429) {
+      alert(data?.error || "이미 신청하셨어요 상담원이 곧 연락드립니다!");
+      return;
+    }
+
+    if (res.status === 404) {
+      alert("신청 API를 찾을 수 없습니다. 서버 배포/연결 상태를 확인해주세요.");
+      return;
+    }
+
+    alert(data?.error || "서버 오류 발생");
+  } catch (error) {
+    console.error("상담 신청 요청 실패:", error);
+    alert("네트워크 오류가 발생했습니다. 잠시 후 다시 시도해주세요.");
   }
 };
   useEffect(() => {
@@ -203,6 +225,7 @@ const handleSubmit = async () => {
     width: "100%",
     maxWidth: 420,
     margin: "0 auto",
+    marginTop: 24,
     padding: 32,
     background: "#F5F6FA",
     borderRadius: 20,
@@ -302,6 +325,32 @@ const handleSubmit = async () => {
   </div>
 </form>
       </section>
+      <footer className="legal-footer">
+        <div className="legal-footer-inner">
+          <p>사업자명: 에스비컨설팅 대부중개 사이트명: 지원대출센터</p>
+          <p>사업자등록번호: 243-07-03020 대표자: 엄원진</p>
+          <p>사업장소재지: 서울특별시 도봉구 도봉로165길 14, 3층 312호(도봉동,퍼스트빌오피스텔)</p>
+          <p>등록 기관 : 서울 도봉 지방자치단체 02-2091-2883</p>
+          <p>대부중개업등록번호: 2025-서울도봉-0001</p>
+          <br />
+          <p>광고되는 대출 상품들의 상환기간은 모두 12개월 이상이며, 최장 상환기간은 120개월입니다.</p>
+          <p>대출금리: 연 5.9%~연 20%이내 (산출기준: 고객의 개인신용평점 등에 따라 달리 적용)</p>
+          <p>연체이율: 연 5.9%~연 20%이내</p>
+          <p>중도상환조건 : 대출실행일로부터 1년 이내 상환시 최대 대출금 2% 적용, 단 이자와 중도상환 수수료의 합산액은 20%를 초과하지 않음.</p>
+          <p className="legal-strong">『중개수수료를 요구하거나 받는 것은 불법으로 대출과 관련된 일체의 수수료를 받지 않습니다.』</p>
+          <p>* 60일내 전액 상환 요구 없습니다. (개인대출 아님)</p>
+          <p>* 본 업자는 금융소비 정보포털 파인에서 조회 가능합니다.</p>
+          <br />
+          <p>대출 총 비용 예시는 다음과 같습니다.</p>
+          <p>100만원을 12개월동안 최대 연이자율 20%로 대출할 시 총 상환금액 1,111,614원 (대출상품에 따라 달라질 수 있습니다.)</p>
+          <p>중개수수료를 요구하거나 받는 것은 불법입니다.</p>
+          <p>과도한 빚은 큰 불행을 안겨줄 수 있습니다.</p>
+          <br />
+          <p>해당 콘텐츠는 저작권법으로 보호되는 바, 영리목적으로 무단사용시 관련법에 의거하여 처벌받을 수 있습니다.</p>
+          <p>홈페이지 무단 복제 사용시 이미지 저작권 및 폰트 저작권으로 민형사상 처벌될 수 있습니다.</p>
+          <p className="legal-copy">Copyright ⓒ All rights 지원대출센터 reserved.</p>
+        </div>
+      </footer>
 
     </div>
     </>

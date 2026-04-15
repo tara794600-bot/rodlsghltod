@@ -4,16 +4,12 @@ import { google } from "googleapis";
 import { initializeApp, cert, getApps } from "firebase-admin/app";
 import { getFirestore } from "firebase-admin/firestore";
 
-// =========================
-// Firebase Admin 초기화
-// =========================
-if (!getApps().length) {
-  initializeApp({
-    credential: cert(JSON.parse(process.env.GOOGLE_SERVICE_ACCOUNT)),
-  });
-}
-
-const db = getFirestore();
+const REQUIRED_ENV_KEYS = [
+  "GOOGLE_SERVICE_ACCOUNT",
+  "TELEGRAM_BOT_TOKEN",
+  "TELEGRAM_CHAT_ID",
+  "SHEET_ID",
+];
 
 export default async function handler(req, res) {
   if (req.method !== "POST") {
@@ -21,7 +17,34 @@ export default async function handler(req, res) {
   }
 
   try {
+    const missingKeys = REQUIRED_ENV_KEYS.filter((key) => !process.env[key]);
+    if (missingKeys.length > 0) {
+      return res.status(500).json({
+        error: `서버 환경변수 누락: ${missingKeys.join(", ")}`,
+      });
+    }
+
+    let serviceAccount;
+    try {
+      serviceAccount = JSON.parse(process.env.GOOGLE_SERVICE_ACCOUNT);
+    } catch {
+      return res.status(500).json({
+        error: "GOOGLE_SERVICE_ACCOUNT 형식이 올바르지 않습니다.",
+      });
+    }
+
+    if (!getApps().length) {
+      initializeApp({
+        credential: cert(serviceAccount),
+      });
+    }
+
+    const db = getFirestore();
     const { name, phone } = req.body;
+
+    if (!name || !phone) {
+      return res.status(400).json({ error: "이름/연락처를 입력해주세요." });
+    }
 
     // 🔒 IP 가져오기
     const ip =
@@ -72,7 +95,7 @@ export default async function handler(req, res) {
     // 구글 시트
     // =========================
     const auth = new google.auth.GoogleAuth({
-      credentials: JSON.parse(process.env.GOOGLE_SERVICE_ACCOUNT),
+      credentials: serviceAccount,
       scopes: ["https://www.googleapis.com/auth/spreadsheets"],
     });
 
