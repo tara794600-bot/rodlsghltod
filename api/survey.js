@@ -10,9 +10,14 @@ const REQUIRED_ENV_KEYS = [
   "SHEET_ID",
 ];
 
+function getTrimmedEnv(key) {
+  const raw = process.env[key];
+  return typeof raw === "string" ? raw.trim() : "";
+}
+
 function parseServiceAccountFromEnv() {
-  const rawJson = process.env.GOOGLE_SERVICE_ACCOUNT?.trim();
-  const rawBase64 = process.env.GOOGLE_SERVICE_ACCOUNT_B64?.trim();
+  const rawJson = getTrimmedEnv("GOOGLE_SERVICE_ACCOUNT");
+  const rawBase64 = getTrimmedEnv("GOOGLE_SERVICE_ACCOUNT_B64");
 
   if (!rawJson && !rawBase64) {
     throw new Error(
@@ -30,7 +35,7 @@ function parseServiceAccountFromEnv() {
           : account.private_key,
     };
 
-    if (!normalized.client_email  !normalized.private_key  !normalized.project_id) {
+    if (!normalized.client_email || !normalized.private_key || !normalized.project_id) {
       throw new Error("서비스 계정 JSON 필수 필드(client_email, private_key, project_id)가 없습니다.");
     }
 
@@ -42,7 +47,7 @@ function parseServiceAccountFromEnv() {
       return parseWithValidation(rawJson);
     } catch (error) {
       if (!rawBase64) {
-        throw new Error(GOOGLE_SERVICE_ACCOUNT 파싱 실패: ${error.message});
+        throw new Error(`GOOGLE_SERVICE_ACCOUNT 파싱 실패: ${error.message}`);
       }
     }
   }
@@ -51,7 +56,7 @@ function parseServiceAccountFromEnv() {
     const decoded = Buffer.from(rawBase64, "base64").toString("utf-8");
     return parseWithValidation(decoded);
   } catch (error) {
-    throw new Error(GOOGLE_SERVICE_ACCOUNT_B64 파싱 실패: ${error.message});
+    throw new Error(`GOOGLE_SERVICE_ACCOUNT_B64 파싱 실패: ${error.message}`);
   }
 }
 
@@ -61,14 +66,14 @@ export default async function handler(req, res) {
   }
 
   try {
-    const missingKeys = REQUIRED_ENV_KEYS.filter((key) => !process.env[key]?.trim());
-    if (!process.env.GOOGLE_SERVICE_ACCOUNT?.trim() && !process.env.GOOGLE_SERVICE_ACCOUNT_B64?.trim()) {
+    const missingKeys = REQUIRED_ENV_KEYS.filter((key) => !getTrimmedEnv(key));
+    if (!getTrimmedEnv("GOOGLE_SERVICE_ACCOUNT") && !getTrimmedEnv("GOOGLE_SERVICE_ACCOUNT_B64")) {
       missingKeys.push("GOOGLE_SERVICE_ACCOUNT(or GOOGLE_SERVICE_ACCOUNT_B64)");
     }
 
     if (missingKeys.length > 0) {
       return res.status(500).json({
-        error: 서버 환경변수 누락: ${missingKeys.join(", ")},
+        error: `서버 환경변수 누락: ${missingKeys.join(", ")}`,
       });
     }
 
@@ -90,21 +95,22 @@ export default async function handler(req, res) {
     const db = getFirestore();
     let body = {};
     try {
-      body = typeof req.body === "string" ? JSON.parse(req.body  "{}") : req.body ?? {};
+      body = typeof req.body === "string" ? JSON.parse(req.body || "{}") : (req.body || {});
     } catch {
       return res.status(400).json({ error: "요청 본문(JSON) 형식이 올바르지 않습니다." });
     }
     const { name, phone } = body;
 
-    if (!name  !phone) {
+    if (!name || !phone) {
       return res.status(400).json({ error: "이름/연락처를 입력해주세요." });
     }
 
     // 🔒 IP 가져오기
-    const ip =
-      req.headers["x-forwarded-for"]?.split(",")[0] 
-      req.socket?.remoteAddress 
-      "unknown";
+    const xForwardedFor = req.headers && req.headers["x-forwarded-for"];
+    const forwardedIp =
+      typeof xForwardedFor === "string" ? xForwardedFor.split(",")[0] : "";
+    const socketIp = req.socket && req.socket.remoteAddress;
+    const ip = forwardedIp || socketIp || "unknown";
 
     // =========================
     // 🚫 IP 중복 체크
@@ -143,8 +149,10 @@ export default async function handler(req, res) {
 
     if (!telegramResponse.ok) {
       const details = await telegramResponse.text();
-      throw new Error(텔레그램 전송 실패(${telegramResponse.status}): ${details});
-    }// =========================
+      throw new Error(`텔레그램 전송 실패(${telegramResponse.status}): ${details}`);
+    }
+
+    // =========================
     // 구글 시트
     // =========================
     const auth = new google.auth.GoogleAuth({
