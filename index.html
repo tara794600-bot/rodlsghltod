@@ -4,32 +4,35 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>베이지론</title>
-  </head>
-  <body>
     <script async src="https://www.googletagmanager.com/gtag/js?id=AW-18078070609"></script>
     <script>
-  window.dataLayer = window.dataLayer || [];
-  function gtag(){dataLayer.push(arguments);}
-  gtag('js', new Date());
+      window.dataLayer = window.dataLayer || [];
+      window.gtag =
+        window.gtag ||
+        function () {
+          window.dataLayer.push(arguments);
+        };
+      window.gtag("js", new Date());
+      window.gtag("config", "AW-18078070609");
 
-  gtag('config', 'AW-18078070609');
-</script>
-    <script>
-function gtag_report_conversion(url) {
-  var callback = function () {
-    if (typeof(url) != 'undefined') {
-      window.location = url;
-    }
-  };
-  gtag('event', 'conversion', {
-      'send_to': 'AW-18078070609/krDbCNWvj5kcENHupaxD',
-      'value': 1.0,
-      'currency': 'KRW',
-      'event_callback': callback
-  });
-  return false;
-}
-</script>
+      window.gtag_report_conversion = function (url) {
+        var callback = function () {
+          if (typeof url !== "undefined") {
+            window.location = url;
+          }
+        };
+
+        window.gtag("event", "conversion", {
+          send_to: "AW-18078070609/krDbCNWvj5kcENHupaxD",
+          value: 1.0,
+          currency: "KRW",
+          event_callback: callback,
+        });
+        return false;
+      };
+    </script>
+  </head>
+  <body>
     <div id="root"></div>
     <script type="module" src="/src/main.jsx"></script>
   </body>
