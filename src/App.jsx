@@ -13,6 +13,7 @@ import after from "./assets/3pageafter.png"
 import square2 from "./assets/3pagesquare.png"
 import after1 from "./assets/3pageafter1.png"
 function App() {
+const ADS_CONVERSION_SEND_TO = "AW-18078070609/krDbCNWvj5kcENHupaxD";
 const [isNotPC, setIsNotPC] = useState(false);
   const [name, setName] = useState("");
 const [phone, setPhone] = useState("");
@@ -79,6 +80,13 @@ const handleSubmit = async () => {
     if (res.status === 200) {
       if (typeof window.gtag_report_conversion === "function") {
         window.gtag_report_conversion();
+      } else if (typeof window.gtag === "function") {
+        // Fallback for environments where helper function is unavailable.
+        window.gtag("event", "conversion", {
+          send_to: ADS_CONVERSION_SEND_TO,
+          value: 1.0,
+          currency: "KRW",
+        });
       }
       alert("신청 완료!");
       setName("");
