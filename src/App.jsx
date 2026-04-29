@@ -13,7 +13,7 @@ import after from "./assets/3pageafter.png"
 import square2 from "./assets/3pagesquare.png"
 import after1 from "./assets/3pageafter1.png"
 function App() {
-const ADS_CONVERSION_SEND_TO = "AW-18078070609/krDbCNWvj5kcENHupaxD";
+const ADS_CONVERSION_SEND_TO = "AW-16949684264/I91fCL6M-qMcEKjQnpI_";
 const [isNotPC, setIsNotPC] = useState(false);
   const [name, setName] = useState("");
 const [phone, setPhone] = useState("");
