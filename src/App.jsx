@@ -13,17 +13,26 @@ import after from "./assets/3pageafter.png"
 import square2 from "./assets/3pagesquare.png"
 import after1 from "./assets/3pageafter1.png"
 const KOREAN_NAME_REGEX = /^[\uAC00-\uD7A3]{2,4}$/;
+const YES_NO_OPTIONS = ["예", "아니오"];
+const NEEDED_AMOUNT_OPTIONS = ["500만원 이상", "500만원 미만"];
 
 function App() {
 const ADS_CONVERSION_SEND_TO = "AW-16949684264/I91fCL6M-qMcEKjQnpI_";
 const [isNotPC, setIsNotPC] = useState(false);
   const [name, setName] = useState("");
 const [phone, setPhone] = useState("");
+const [hasLoan, setHasLoan] = useState("");
+const [neededAmount, setNeededAmount] = useState("");
+const [hasPublicRecord, setHasPublicRecord] = useState("");
 const trimmedName = name.trim();
 const cleanPhoneForValidation = phone.replace(/\D/g, "");
-const isValid =
+const isValid = Boolean(
   KOREAN_NAME_REGEX.test(trimmedName) &&
-  cleanPhoneForValidation.length === 11;
+  cleanPhoneForValidation.length === 11 &&
+  hasLoan &&
+  neededAmount &&
+  hasPublicRecord
+);
 const validateForm = () => {
   const cleanPhone = phone.replace(/\D/g, "");
 
@@ -33,6 +42,18 @@ const validateForm = () => {
   }
   if (cleanPhone.length !== 11) {
     alert("전화번호는 11자리로 입력해주세요!");
+    return false;
+  }
+  if (!hasLoan) {
+    alert("대출 보유 여부를 선택해주세요!");
+    return false;
+  }
+  if (!neededAmount) {
+    alert("필요자금 항목을 선택해주세요!");
+    return false;
+  }
+  if (!hasPublicRecord) {
+    alert("공공이력 여부를 선택해주세요!");
     return false;
   }
 
@@ -67,7 +88,13 @@ const handleSubmit = async () => {
       headers: {
         "Content-Type": "application/json",
       },
-      body: JSON.stringify({ name: name.trim(), phone }),
+      body: JSON.stringify({
+        name: name.trim(),
+        phone,
+        hasLoan,
+        neededAmount,
+        hasPublicRecord,
+      }),
     });
 
     const text = await res.text();
@@ -94,6 +121,9 @@ const handleSubmit = async () => {
       alert("신청 완료!");
       setName("");
       setPhone("");
+      setHasLoan("");
+      setNeededAmount("");
+      setHasPublicRecord("");
       return;
     }
 
@@ -130,6 +160,19 @@ const handleSubmit = async () => {
   
       return () => observer.disconnect();
     }, []);
+
+  const getChoiceButtonStyle = (active) => ({
+    flex: 1,
+    padding: "12px 10px",
+    borderRadius: 6,
+    border: active ? "1px solid #4F5DB8" : "1px solid #ddd",
+    background: active ? "#EEF1FF" : "white",
+    color: active ? "#4F5DB8" : "#333",
+    fontSize: 14,
+    fontWeight: active ? 700 : 500,
+    cursor: "pointer"
+  });
+
   return (
     <>
     <div className="main">
@@ -305,6 +348,63 @@ const handleSubmit = async () => {
     outline: "none"
   }}
 />
+  </div>
+
+  {/* 대출 보유 여부 */}
+  <div>
+    <div style={{ marginBottom: 8, fontWeight: 600,textAlign: "left" }}>
+      대출 보유 여부 <span style={{ color: "#4F5DB8" }}>*</span>
+    </div>
+    <div style={{ display: "flex", gap: 8 }}>
+      {YES_NO_OPTIONS.map((option) => (
+        <button
+          key={`loan-${option}`}
+          type="button"
+          onClick={() => setHasLoan(option)}
+          style={getChoiceButtonStyle(hasLoan === option)}
+        >
+          {option}
+        </button>
+      ))}
+    </div>
+  </div>
+
+  {/* 필요자금 */}
+  <div>
+    <div style={{ marginBottom: 8, fontWeight: 600,textAlign: "left" }}>
+      필요자금 항목 <span style={{ color: "#4F5DB8" }}>*</span>
+    </div>
+    <div style={{ display: "flex", gap: 8 }}>
+      {NEEDED_AMOUNT_OPTIONS.map((option) => (
+        <button
+          key={`amount-${option}`}
+          type="button"
+          onClick={() => setNeededAmount(option)}
+          style={getChoiceButtonStyle(neededAmount === option)}
+        >
+          {option}
+        </button>
+      ))}
+    </div>
+  </div>
+
+  {/* 공공이력 여부 */}
+  <div>
+    <div style={{ marginBottom: 8, fontWeight: 600,textAlign: "left" }}>
+      공공이력 여부(개인회생, 신용회복, 파산) <span style={{ color: "#4F5DB8" }}>*</span>
+    </div>
+    <div style={{ display: "flex", gap: 8 }}>
+      {YES_NO_OPTIONS.map((option) => (
+        <button
+          key={`public-record-${option}`}
+          type="button"
+          onClick={() => setHasPublicRecord(option)}
+          style={getChoiceButtonStyle(hasPublicRecord === option)}
+        >
+          {option}
+        </button>
+      ))}
+    </div>
   </div>
 
   {/* 버튼 */}
