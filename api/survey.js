@@ -10,9 +10,33 @@ const REQUIRED_ENV_KEYS = [
   "SHEET_ID",
 ];
 
+const KOREAN_NAME_REGEX = /^[\uAC00-\uD7A3]{2,4}$/;
+
 function getTrimmedEnv(key) {
   const raw = process.env[key];
   return typeof raw === "string" ? raw.trim() : "";
+}
+
+function getHeaderValue(req, key) {
+  const value = req.headers && req.headers[key];
+  return Array.isArray(value) ? value[0] : value;
+}
+
+function getClientIp(req) {
+  const forwardedFor = getHeaderValue(req, "x-forwarded-for");
+  const realIp = getHeaderValue(req, "x-real-ip");
+  const socketIp = req.socket && req.socket.remoteAddress;
+  const ip =
+    (typeof forwardedFor === "string" && forwardedFor.split(",")[0]) ||
+    (typeof realIp === "string" && realIp) ||
+    socketIp ||
+    "unknown";
+
+  return String(ip).trim() || "unknown";
+}
+
+function getIpLogDocId(ip) {
+  return ip.replace(/\//g, "_");
 }
 
 function parseServiceAccountFromEnv() {
@@ -65,6 +89,9 @@ export default async function handler(req, res) {
     return res.status(405).json({ message: "Method Not Allowed" });
   }
 
+  let ipRef = null;
+  let ipReserved = false;
+
   try {
     const missingKeys = REQUIRED_ENV_KEYS.filter((key) => !getTrimmedEnv(key));
     if (!getTrimmedEnv("GOOGLE_SERVICE_ACCOUNT") && !getTrimmedEnv("GOOGLE_SERVICE_ACCOUNT_B64")) {
@@ -99,26 +126,43 @@ export default async function handler(req, res) {
     } catch {
       return res.status(400).json({ error: "요청 본문(JSON) 형식이 올바르지 않습니다." });
     }
-    const { name, phone } = body;
+    const name = typeof body.name === "string" ? body.name.trim() : "";
+    const phone = typeof body.phone === "string" ? body.phone.trim() : "";
 
     if (!name || !phone) {
       return res.status(400).json({ error: "이름/연락처를 입력해주세요." });
     }
 
+    if (!KOREAN_NAME_REGEX.test(name)) {
+      return res.status(400).json({ error: "이름은 한글 2~4자만 입력해주세요." });
+    }
+
     // 🔒 IP 가져오기
-    const xForwardedFor = req.headers && req.headers["x-forwarded-for"];
-    const forwardedIp =
-      typeof xForwardedFor === "string" ? xForwardedFor.split(",")[0] : "";
-    const socketIp = req.socket && req.socket.remoteAddress;
-    const ip = forwardedIp || socketIp || "unknown";
+    const ip = getClientIp(req);
 
     // =========================
     // 🚫 IP 중복 체크
     // =========================
-    const ipRef = db.collection("ip_logs").doc(ip);
-    const ipDoc = await ipRef.get();
+    ipRef = db.collection("ip_logs").doc(getIpLogDocId(ip));
 
-    if (ipDoc.exists) {
+    const reserved = await db.runTransaction(async (transaction) => {
+      const ipDoc = await transaction.get(ipRef);
+      if (ipDoc.exists) {
+        return false;
+      }
+
+      transaction.set(ipRef, {
+        createdAt: new Date(),
+        ip,
+        name,
+        phone,
+        status: "pending",
+      });
+
+      return true;
+    });
+
+    if (!reserved) {
       return res.status(429).json({
         error: "이미 신청하셨습니다.",
       });
@@ -127,6 +171,8 @@ export default async function handler(req, res) {
     // =========================
     // 텔레그램
     // =========================
+    ipReserved = true;
+
     const message = `
 📩 새로운 신청
 
@@ -172,16 +218,32 @@ export default async function handler(req, res) {
     });
 
     // 저장 (신청 기록) - 외부 전송 성공 후 기록해, 실패 시 재시도 가능하게 유지
-    await ipRef.set({
-      createdAt: new Date(),
-      name,
-      phone,
-    });
+    await ipRef.set(
+      {
+        completedAt: new Date(),
+        status: "completed",
+      },
+      { merge: true }
+    );
 
     return res.status(200).json({ success: true });
 
   } catch (err) {
     console.error(err);
+    if (ipReserved && ipRef) {
+      try {
+        await ipRef.set(
+          {
+            failedAt: new Date(),
+            lastError: err.message || "서버 오류",
+            status: "failed",
+          },
+          { merge: true }
+        );
+      } catch (logError) {
+        console.error(logError);
+      }
+    }
     return res.status(500).json({ error: err.message || "서버 에러" });
   }
 }
