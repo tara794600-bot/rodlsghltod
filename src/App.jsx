@@ -12,22 +12,25 @@ import before from "./assets/before.png"
 import after from "./assets/3pageafter.png"
 import square2 from "./assets/3pagesquare.png"
 import after1 from "./assets/3pageafter1.png"
+const KOREAN_NAME_REGEX = /^[\uAC00-\uD7A3]{2,4}$/;
+
 function App() {
 const ADS_CONVERSION_SEND_TO = "AW-16949684264/I91fCL6M-qMcEKjQnpI_";
 const [isNotPC, setIsNotPC] = useState(false);
   const [name, setName] = useState("");
 const [phone, setPhone] = useState("");
+const trimmedName = name.trim();
+const cleanPhoneForValidation = phone.replace(/\D/g, "");
 const isValid =
-  name.trim().length >= 2 &&
-  phone.replace(/\D/g, "").length === 11;
+  KOREAN_NAME_REGEX.test(trimmedName) &&
+  cleanPhoneForValidation.length === 11;
 const validateForm = () => {
   const cleanPhone = phone.replace(/\D/g, "");
 
-  if (name.trim().length < 2) {
-    alert("이름은 2글자 이상 입력해주세요!");
+  if (!KOREAN_NAME_REGEX.test(name.trim())) {
+    alert("이름은 한글 2~4자만 입력해주세요!");
     return false;
   }
-
   if (cleanPhone.length !== 11) {
     alert("전화번호는 11자리로 입력해주세요!");
     return false;
@@ -64,7 +67,7 @@ const handleSubmit = async () => {
       headers: {
         "Content-Type": "application/json",
       },
-      body: JSON.stringify({ name, phone }),
+      body: JSON.stringify({ name: name.trim(), phone }),
     });
 
     const text = await res.text();
@@ -225,6 +228,7 @@ const handleSubmit = async () => {
         <h2>신용조회 없는 1분 상담으로</h2>
         <h2>높은금리의 대출이자를 절반 이하로 줄여보세요.</h2>
         <form
+        noValidate
         onSubmit={(e) => {
     e.preventDefault(); // 🚨 이거 필수
     handleSubmit();
@@ -267,6 +271,9 @@ const handleSubmit = async () => {
   type="text"
   placeholder="이름을 입력하세요."
   value={name}
+  maxLength={4}
+  pattern="[가-힣]{2,4}"
+  title="이름은 한글 2~4자만 입력해주세요."
   onChange={(e) => setName(e.target.value)}
   style={{
     width: "100%",
