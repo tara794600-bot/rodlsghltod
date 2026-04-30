@@ -11,6 +11,8 @@ const REQUIRED_ENV_KEYS = [
 ];
 
 const KOREAN_NAME_REGEX = /^[\uAC00-\uD7A3]{2,4}$/;
+const YES_NO_OPTIONS = ["예", "아니오"];
+const NEEDED_AMOUNT_OPTIONS = ["500만원 이상", "500만원 미만"];
 
 function getTrimmedEnv(key) {
   const raw = process.env[key];
@@ -37,6 +39,10 @@ function getClientIp(req) {
 
 function getIpLogDocId(ip) {
   return ip.replace(/\//g, "_");
+}
+
+function isAllowedOption(value, options) {
+  return options.includes(value);
 }
 
 function parseServiceAccountFromEnv() {
@@ -128,6 +134,10 @@ export default async function handler(req, res) {
     }
     const name = typeof body.name === "string" ? body.name.trim() : "";
     const phone = typeof body.phone === "string" ? body.phone.trim() : "";
+    const hasLoan = typeof body.hasLoan === "string" ? body.hasLoan.trim() : "";
+    const neededAmount = typeof body.neededAmount === "string" ? body.neededAmount.trim() : "";
+    const hasPublicRecord =
+      typeof body.hasPublicRecord === "string" ? body.hasPublicRecord.trim() : "";
 
     if (!name || !phone) {
       return res.status(400).json({ error: "이름/연락처를 입력해주세요." });
@@ -135,6 +145,18 @@ export default async function handler(req, res) {
 
     if (!KOREAN_NAME_REGEX.test(name)) {
       return res.status(400).json({ error: "이름은 한글 2~4자만 입력해주세요." });
+    }
+
+    if (!hasLoan || !neededAmount || !hasPublicRecord) {
+      return res.status(400).json({ error: "추가 질문 3개를 모두 선택해주세요." });
+    }
+
+    if (
+      !isAllowedOption(hasLoan, YES_NO_OPTIONS) ||
+      !isAllowedOption(neededAmount, NEEDED_AMOUNT_OPTIONS) ||
+      !isAllowedOption(hasPublicRecord, YES_NO_OPTIONS)
+    ) {
+      return res.status(400).json({ error: "선택값이 올바르지 않습니다." });
     }
 
     // 🔒 IP 가져오기
@@ -156,6 +178,9 @@ export default async function handler(req, res) {
         ip,
         name,
         phone,
+        hasLoan,
+        neededAmount,
+        hasPublicRecord,
         status: "pending",
       });
 
@@ -178,6 +203,9 @@ export default async function handler(req, res) {
 
 👤 이름: ${name}
 📞 연락처: ${phone}
+💳 대출 보유 여부: ${hasLoan}
+💰 필요자금: ${neededAmount}
+📌 공공이력 여부: ${hasPublicRecord}
 🌐 IP: ${ip}
 `;
 
@@ -210,10 +238,18 @@ export default async function handler(req, res) {
 
     await sheets.spreadsheets.values.append({
       spreadsheetId: process.env.SHEET_ID,
-      range: "시트1!A:D",
+      range: "시트1!A:G",
       valueInputOption: "USER_ENTERED",
       requestBody: {
-        values: [[name, phone, ip, new Date().toLocaleString()]],
+        values: [[
+          name,
+          phone,
+          hasLoan,
+          neededAmount,
+          hasPublicRecord,
+          ip,
+          new Date().toLocaleString(),
+        ]],
       },
     });
 
