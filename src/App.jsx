@@ -17,7 +17,7 @@ const YES_NO_OPTIONS = ["예", "아니오"];
 const NEEDED_AMOUNT_OPTIONS = ["500만원 이상", "500만원 미만"];
 
 function App() {
-const ADS_CONVERSION_SEND_TO = "AW-16949684264/I91fCL6M-qMcEKjQnpI_";
+const ADS_CONVERSION_SEND_TO = "AW-18078070609/krDbCNWvj5kcENHupaxD";
 const [isNotPC, setIsNotPC] = useState(false);
   const [name, setName] = useState("");
 const [phone, setPhone] = useState("");
